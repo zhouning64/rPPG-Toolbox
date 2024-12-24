@@ -203,9 +203,13 @@ class BaseLoader(Dataset):
             begin(float): index of begining during train/val split.
             end(float): index of ending during train/val split.
         """
-        data_dirs_split = self.split_raw_data(data_dirs, begin, end)  # partition dataset 
+        print(data_dirs)
+        print(begin)
+        print(end)
+        data_dirs_split = self.split_raw_data(data_dirs, begin, end)  # partition dataset
         # send data directories to be processed
-        file_list_dict = self.multi_process_manager(data_dirs_split, config_preprocess) 
+        file_list_dict = self.multi_process_manager(data_dirs_split, config_preprocess)
+        print(file_list_dict)
         self.build_file_list(file_list_dict)  # build file list
         self.load_preprocessed_data()  # load all data and corresponding labels (sorted for consistency)
         print("Total Number of raw files preprocessed:", len(data_dirs_split), end='\n\n')
