@@ -15,13 +15,75 @@ import os
 class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
     def __init__(self, frames=128):
         super(PhysNet_padding_Encoder_Decoder_MAX, self).__init__()
-        # Input [1, T]
-        self.conv1 = nn.Conv1d(in_channels=1, out_channels=16, kernel_size=3, stride=1, padding=1)
-        self.relu1 = nn.ReLU()
-        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1)
-        self.relu2 = nn.ReLU()
-        self.conv3 = nn.Conv1d(in_channels=32, out_channels=1, kernel_size=3, stride=1, padding=1)
 
+        self.ConvBlock1 = nn.Sequential(
+            nn.Conv3d(3, 16, [1, 5, 5], stride=1, padding=[0, 2, 2]),
+            nn.BatchNorm3d(16),
+            nn.ReLU(inplace=True),
+        )
+
+        self.ConvBlock2 = nn.Sequential(
+            nn.Conv3d(16, 32, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(32),
+            nn.ReLU(inplace=True),
+        )
+        self.ConvBlock3 = nn.Sequential(
+            nn.Conv3d(32, 64, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+        )
+
+        self.ConvBlock4 = nn.Sequential(
+            nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+        )
+        self.ConvBlock5 = nn.Sequential(
+            nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+        )
+        self.ConvBlock6 = nn.Sequential(
+            nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+        )
+        self.ConvBlock7 = nn.Sequential(
+            nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+        )
+        self.ConvBlock8 = nn.Sequential(
+            nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+        )
+        self.ConvBlock9 = nn.Sequential(
+            nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+        )
+
+        self.upsample = nn.Sequential(
+            nn.ConvTranspose3d(in_channels=64, out_channels=64, kernel_size=[
+                4, 1, 1], stride=[2, 1, 1], padding=[1, 0, 0]),  # [1, 128, 32]
+            nn.BatchNorm3d(64),
+            nn.ELU(),
+        )
+        self.upsample2 = nn.Sequential(
+            nn.ConvTranspose3d(in_channels=64, out_channels=64, kernel_size=[
+                4, 1, 1], stride=[2, 1, 1], padding=[1, 0, 0]),  # [1, 128, 32]
+            nn.BatchNorm3d(64),
+            nn.ELU(),
+        )
+
+        self.ConvBlock10 = nn.Conv3d(64, 1, [1, 1, 1], stride=1, padding=0)
+
+        self.MaxpoolSpa = nn.MaxPool3d((1, 2, 2), stride=(1, 2, 2))
+        self.MaxpoolSpaTem = nn.MaxPool3d((2, 2, 2), stride=2)
+
+        # self.poolspa = nn.AdaptiveMaxPool3d((frames,1,1))    # pool only spatial space
+        self.poolspa = nn.AdaptiveAvgPool3d((frames, 1, 1))
 
     # Frame = 3x72x72 Image
     # Given a frame, return a skin mask (0 = not skin, 1 = skin)
@@ -106,7 +168,7 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
     def compressByAvg(self, array):
         return array.mean(dim=0)
 
-
+    # For Model 4
     # Avg the spatial value (sum / (# of non-zero pixels))
     def spatialAvg(self, array):
         # return array.mean(dim=0)
@@ -121,7 +183,7 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
             mean_value = non_zero_values.mean()
             return mean_value
 
-
+    # For Model 3
     def compressByShift(self, array):
         array = array.int()
         # Apply bitwise shift and combine operations across the entire tensor
@@ -137,7 +199,6 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
         # compressed_tensor = torch.tensor(compressed_array, dtype=torch.float)
         # print("=======Shape After Compress======== ", compressed_tensor.shape)
         return compressed_tensor
-
 
     def save_tensor_as_png(self, tensor, filename):
         os.chdir("C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\dataset\\saved_files\\")
@@ -158,55 +219,137 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
 
         # Save the image as a PNG file
         image.save(filename)
-        print(f"Image saved as {filename}")
+        # print(f"Image saved as {filename}")
 
-
-    def forward(self, x):  # Batch_size*[3, T, 72,72]
+    def forward(self, x, outputs):  # Batch_size*[3, T, 72,72]
+        x = x.permute(0, 2, 1, 3, 4)
         x_visual = x
         [batch, channel, length, width, height] = x.shape
+        # print("MAIN BRANCH - X.SHAPE", x.shape)
         # ================EZ: Skin Segmentation=================
         # Create a tensor to store the frame w/ skin segmented out, same dimensions as X
-        noisyRPPG = []  # Store the noisyRPPG waveform [batch, T]
         device = x.device
         # Loop through frames, compute skin mask, multiply w/ frame, store in tensor
         for b in range(0, batch):
-            batchAverages = []
             for t in range(0, length):
                 frame = x[b, :, t, :, :]  # Get 3x128x128 frame
                 frame = frame.to(device)
                 mask = self.skin_mask_v2(frame)  # Get mask of 0s and 1s
                 mask = mask.to(device)
                 seg_frame = frame * mask  # 3x72x72
+                x[b, :, t, :, :] = seg_frame
 
-                # file_name_og = "C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\dataset\\saved_files\\original_frames\\image" + str(b) + "_" + str(t) + ".png"
-                # self.save_tensor_as_png(frame, file_name_og)  # Save the img after applying mask as a png image
+                # Save the imgs after applying skin mask
+                # file_name_og = "original_frames/image" + str(b) + "_" + str(t) + ".png"
+                # self.save_tensor_as_png(frame, file_name_og) #Save the img after applying mask as a png image
 
-                # file_name_seg = "C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\dataset\\saved_files\\seg_frames\\image" + str(b) + "_" + str(t) + ".png"
-                # self.save_tensor_as_png(seg_frame, file_name_seg)  # Save the img after applying mask as a png image
+                # file_name_seg = "seg_frames/image" + str(b) + "_" + str(t) + ".png"
+                # self.save_tensor_as_png(seg_frame, file_name_seg) #Save the img after applying mask as a png image
+        x = self.ConvBlock1(x)  # x [3, T, 128,128]
+        x = x * outputs[0]
+        x = self.MaxpoolSpa(x)  # x [16, T, 64,64]
 
-                # grayscale_frame = compressByAvg(seg_frame) #Average the RGB values, so dimensions become 72x72
-                grayscale_frame = self.compressByAvg(seg_frame)  # Average the RGB values, so dimensions become 72x72
-                frame_average = self.spatialAvg(grayscale_frame)  # CHANGED
-                batchAverages.append(frame_average)
-            noisyRPPG.append(batchAverages)
-        # Current dimensions: [batch][T]
-        noisyRPPG = torch.tensor(noisyRPPG).to(device)  # Turn into a tensor
-        noisyRPPG = noisyRPPG.unsqueeze(1)
-        # Current dimension: [batch][1][T]
-        # ===============EZ: Skin Segmentation END ===============
-        # Expected Shape: [batch, channels, time]
-        # x shape: [batch, 1, T]
-        noisyRPPG = self.relu1(self.conv1(noisyRPPG))  # Output: batch[16][T]
-        noisyRPPG = self.relu2(self.conv2(noisyRPPG))  # Output: batch[32][T]
-        noisyRPPG = self.conv3(noisyRPPG)  # Output: batch[1][T]
-        noisyRPPG = noisyRPPG.squeeze(1)  # Output: [batch][T]
-        noisyRPPG = noisyRPPG.unsqueeze(1).unsqueeze(3).unsqueeze(4)  # Output: batch[1][t][1][1]
-        rPPG = noisyRPPG.view(-1, length)
+        x = self.ConvBlock2(x)  # x [32, T, 64,64]
+        x = x * outputs[1]
+        x_visual6464 = self.ConvBlock3(x)  # x [32, T, 64,64]
+        x_visual6464 = x_visual6464 * outputs[2]
+        # x [32, T/2, 32,32]    Temporal halve
+        x = self.MaxpoolSpaTem(x_visual6464)
 
-        #return rPPG, x_visual, x_visual3232, x_visual1616
-        return rPPG, x_visual
-        # Final Return Dimensions:
-        # rPPG [1, T, 1, 1]
-        # x_visual [3, T, 128, 128]
-        # x_visual3232 [64, T/2, 32, 32]
-        # x_visual1616 [64, T/4, 16, 16]
+        x = self.ConvBlock4(x)  # x [64, T/2, 32,32]
+        x = x * outputs[3]
+
+        x_visual3232 = self.ConvBlock5(x)  # x [64, T/2, 32,32]
+        x_visual3232 = x_visual3232 * outputs[4]
+        x = self.MaxpoolSpaTem(x_visual3232)  # x [64, T/4, 16,16]
+
+        x = self.ConvBlock6(x)  # x [64, T/4, 16,16]
+        x_visual1616 = self.ConvBlock7(x)  # x [64, T/4, 16,16]
+        x = self.MaxpoolSpa(x_visual1616)  # x [64, T/4, 8,8]
+
+        x = self.ConvBlock8(x)  # x [64, T/4, 8, 8]
+        x = self.ConvBlock9(x)  # x [64, T/4, 8, 8]
+        x = self.upsample(x)  # x [64, T/2, 8, 8]
+        x = self.upsample2(x)  # x [64, T, 8, 8]
+
+        # x [64, T, 1,1]    -->  groundtruth left and right - 7
+        x = self.poolspa(x)
+        x = self.ConvBlock10(x)  # x [1, T, 1,1]
+
+        rPPG = x.view(-1, length)
+
+        return rPPG, x_visual, x_visual3232, x_visual1616
+
+
+# GENERATE ATTENTION MAPS and save them in "outputs"
+class AppearanceBranch(nn.Module):
+    def __init__(self, frames=128):
+        super(AppearanceBranch, self).__init__()
+
+        self.ConvBlock1 = nn.Sequential(
+            nn.Conv3d(3, 16, [1, 5, 5], stride=1, padding=[0, 2, 2]),  # 16
+            nn.BatchNorm3d(16),
+            nn.ReLU(inplace=True),
+        )
+
+        self.ConvBlock2 = nn.Sequential(
+            nn.Conv3d(16, 32, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(32),
+            nn.ReLU(inplace=True),
+        )
+        self.ConvBlock3 = nn.Sequential(
+            nn.Conv3d(32, 64, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+        )
+
+        self.ConvBlock4 = nn.Sequential(
+            nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+        )
+        self.ConvBlock5 = nn.Sequential(
+            nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+        )
+
+        self.MaxpoolSpa = nn.MaxPool3d((1, 2, 2), stride=(1, 2, 2))
+        self.MaxpoolSpaTem = nn.MaxPool3d((2, 2, 2), stride=2)
+
+        # self.poolspa = nn.AdaptiveMaxPool3d((frames,1,1))    # pool only spatial space
+        self.poolspa = nn.AdaptiveAvgPool3d((frames, 1, 1))
+
+    def forward(self, x):  # Batch_size*[3, T, 128,128]
+        x = x.permute(0, 2, 1, 3, 4)
+        x_visual = x
+        [batch, channel, length, width, height] = x.shape
+        outputs = []
+        sigm = nn.Sigmoid()
+
+        # print("APPEARANCE BRANCH - X SHAPE", x.shape)
+        x = self.ConvBlock1(x)  # x [3, T, 128,128]
+        x = sigm(x)
+        outputs.append(x)
+        x = self.MaxpoolSpa(x)  # x [16, T, 64,64]
+
+        x = self.ConvBlock2(x)  # x [32, T, 64,64]
+        x = sigm(x)
+        outputs.append(x)
+
+        x_visual6464 = self.ConvBlock3(x)  # x [32, T, 64,64]
+        x = sigm(x_visual6464)
+        outputs.append(x_visual6464)
+        # x [32, T/2, 32,32]    Temporal halve
+        x = self.MaxpoolSpaTem(x_visual6464)
+
+        x = self.ConvBlock4(x)  # x [64, T/2, 32,32]
+        x = sigm(x)
+        outputs.append(x)
+
+        x_visual3232 = self.ConvBlock5(x)  # x [64, T/2, 32,32]
+        x = sigm(x_visual3232)
+        outputs.append(x_visual3232)
+        x = self.MaxpoolSpaTem(x_visual3232)  # x [64, T/4, 16,16]
+
+        return outputs

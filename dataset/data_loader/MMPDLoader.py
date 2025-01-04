@@ -51,7 +51,6 @@ class MMPDLoader(BaseLoader):
         self.info = config_data.INFO
         super().__init__(name, data_path, config_data)
 
-
     def get_raw_data(self, raw_data_path):
         """Returns data directories under the path(For MMPD dataset)."""
 
@@ -64,19 +63,19 @@ class MMPDLoader(BaseLoader):
             mat_dirs = os.listdir(data_dir)
             for mat_dir in mat_dirs:
                 index = mat_dir.split('_')[-1].split('.')[0]
-                dirs.append({'index': index, 
-                             'path': data_dir+os.sep+mat_dir,
+                dirs.append({'index': index,
+                             'path': data_dir + os.sep + mat_dir,
                              'subject': subject})
         return dirs
 
     def split_raw_data(self, data_dirs, begin, end):
-        """Returns a subset of data dirs, split with begin and end values, 
+        """Returns a subset of data dirs, split with begin and end values,
         and ensures no overlapping subjects between splits"""
 
         # return the full directory
         if begin == 0 and end == 1:
             return data_dirs
-        
+
         data_info = dict()
         for data in data_dirs:
             index = data['index']
@@ -94,7 +93,7 @@ class MMPDLoader(BaseLoader):
         # get split of data set (depending on start / end)
         subj_range = list(range(num_subjs))
         if begin != 0 or end != 1:
-            subj_range = list(range(int(begin*num_subjs), int(end*num_subjs)))
+            subj_range = list(range(int(begin * num_subjs), int(end * num_subjs)))
         print('used subject ids for split:', [subj_list[i] for i in subj_range])
 
         # compile file list
@@ -118,6 +117,11 @@ class MMPDLoader(BaseLoader):
         bvps = BaseLoader.resample_ppg(bvps, target_length)
         frames_clips, bvps_clips = self.preprocess(frames, bvps, config_preprocess)
 
+        # print("FRAMES MMPD SHAPE", frames.shape)
+        # print("FRAMES CLIPS MMPD SHAPE", frames_clips.shape)
+        # print("BVPS MMPD", bvps.shape)
+        # print("BVPS CLIPS MMPD", bvps_clips.shape)
+
         input_name_list, label_name_list = self.save_multi_process(frames_clips, bvps_clips, saved_filename)
         file_list_dict[i] = input_name_list
 
@@ -131,7 +135,7 @@ class MMPDLoader(BaseLoader):
 
         if self.config_data.PREPROCESS.USE_PSUEDO_PPG_LABEL:
             bvps = self.generate_pos_psuedo_labels(frames, fs=self.config_data.FS)
-        else: 
+        else:
             bvps = np.array(mat['GT_ppg']).T.reshape(-1)
 
         light = mat['light']
@@ -143,11 +147,11 @@ class MMPDLoader(BaseLoader):
         hair_cover = mat['hair_cover']
         makeup = mat['makeup']
         information = [light, motion, exercise, skin_color, gender, glasser, hair_cover, makeup]
-        
+
         light, motion, exercise, skin_color, gender, glasser, hair_cover, makeup = self.get_information(information)
 
         return frames, bvps, light, motion, exercise, skin_color, gender, glasser, hair_cover, makeup
-    
+
     def load_preprocessed_data(self):
         """ Loads the preprocessed data listed in the file list.
 
@@ -157,11 +161,17 @@ class MMPDLoader(BaseLoader):
             None
         """
         file_list_path = self.file_list_path  # get list of files in
+
+        # EZ
+        print("======FILE LIST PATH============", file_list_path)
+        # EZ
+
         file_list_df = pd.read_csv(file_list_path)
         inputs_temp = file_list_df['input_files'].tolist()
         inputs = []
         for each_input in inputs_temp:
             info = each_input.split(os.sep)[-1].split('_')
+            # print("==========INFO=========", info)
             light = int(info[1][-1])
             motion = int(info[2][-1])
             exercise = int(info[3][-1])
@@ -170,10 +180,12 @@ class MMPDLoader(BaseLoader):
             glasser = int(info[6][-1])
             hair_cover = int(info[7][-1])
             makeup = int(info[8][-1])
+            print("========INFO============", self.info)
+
             if (light in self.info.LIGHT) and (motion in self.info.MOTION) and \
-                (exercise in self.info.EXERCISE) and (skin_color in self.info.SKIN_COLOR) and \
-                (gender in self.info.GENDER) and (glasser in self.info.GLASSER) and \
-                (hair_cover in self.info.HAIR_COVER) and (makeup in self.info.MAKEUP):
+                    (exercise in self.info.EXERCISE) and (skin_color in self.info.SKIN_COLOR) and \
+                    (gender in self.info.GENDER) and (glasser in self.info.GLASSER) and \
+                    (hair_cover in self.info.HAIR_COVER) and (makeup in self.info.MAKEUP):
                 inputs.append(each_input)
         if not inputs:
             raise ValueError(self.dataset_name + ' dataset loading data error!')
@@ -196,7 +208,7 @@ class MMPDLoader(BaseLoader):
             light = 4
         else:
             raise ValueError("Error with MMPD or Mini-MMPD dataset labels! "
-            "The following lighting label is not supported: {0}".format(information[0]))
+                             "The following lighting label is not supported: {0}".format(information[0]))
 
         motion = ''
         if information[1] == 'Stationary' or information[1] == 'Stationary (after exercise)':
@@ -205,14 +217,14 @@ class MMPDLoader(BaseLoader):
             motion = 2
         elif information[1] == 'Talking':
             motion = 3
-        # 'Watching Videos' is an erroneous label from older versions of the MMPD dataset, 
+        # 'Watching Videos' is an erroneous label from older versions of the MMPD dataset,
         #  it should be handled as 'Walking'.
         elif information[1] == 'Walking' or information[1] == 'Watching Videos':
             motion = 4
         else:
-            raise ValueError("Error with MMPD or Mini-MMPD dataset labels! " 
-            "The following motion label is not supported: {0}".format(information[1]))
-        
+            raise ValueError("Error with MMPD or Mini-MMPD dataset labels! "
+                             "The following motion label is not supported: {0}".format(information[1]))
+
         exercise = ''
         if information[2] == 'True':
             exercise = 1
@@ -220,13 +232,13 @@ class MMPDLoader(BaseLoader):
             exercise = 2
         else:
             raise ValueError("Error with MMPD or Mini-MMPD dataset labels! "
-            "The following exercise label is not supported: {0}".format(information[2]))
+                             "The following exercise label is not supported: {0}".format(information[2]))
 
         skin_color = information[3][0][0]
 
         if skin_color != 3 and skin_color != 4 and skin_color != 5 and skin_color != 6:
             raise ValueError("Error with MMPD or Mini-MMPD dataset labels! "
-            "The following skin_color label is not supported: {0}".format(information[3][0][0]))
+                             "The following skin_color label is not supported: {0}".format(information[3][0][0]))
 
         gender = ''
         if information[4] == 'male':
@@ -235,7 +247,7 @@ class MMPDLoader(BaseLoader):
             gender = 2
         else:
             raise ValueError("Error with MMPD or Mini-MMPD dataset labels! "
-            "The following gender label is not supported: {0}".format(information[4]))
+                             "The following gender label is not supported: {0}".format(information[4]))
 
         glasser = ''
         if information[5] == 'True':
@@ -244,7 +256,7 @@ class MMPDLoader(BaseLoader):
             glasser = 2
         else:
             raise ValueError("Error with MMPD or Mini-MMPD dataset labels! "
-            "The following glasser label is not supported: {0}".format(information[5]))
+                             "The following glasser label is not supported: {0}".format(information[5]))
 
         hair_cover = ''
         if information[6] == 'True':
@@ -253,8 +265,8 @@ class MMPDLoader(BaseLoader):
             hair_cover = 2
         else:
             raise ValueError("Error with MMPD or Mini-MMPD dataset labels! "
-            "The following hair_cover label is not supported: {0}".format(information[6]))
-        
+                             "The following hair_cover label is not supported: {0}".format(information[6]))
+
         makeup = ''
         if information[7] == 'True':
             makeup = 1
@@ -262,7 +274,6 @@ class MMPDLoader(BaseLoader):
             makeup = 2
         else:
             raise ValueError("Error with MMPD or Mini-MMPD dataset labels! "
-            "The following makeup label is not supported: {0}".format(information[7]))
+                             "The following makeup label is not supported: {0}".format(information[7]))
 
-        return light, motion ,exercise, skin_color, gender, glasser, hair_cover, makeup
-
+        return light, motion, exercise, skin_color, gender, glasser, hair_cover, makeup

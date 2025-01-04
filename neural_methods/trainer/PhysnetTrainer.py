@@ -8,6 +8,7 @@ import torch.optim as optim
 from evaluation.metrics import calculate_metrics
 from neural_methods.loss.PhysNetNegPearsonLoss import Neg_Pearson
 from neural_methods.model.PhysNet import PhysNet_padding_Encoder_Decoder_MAX
+from neural_methods.model.PhysNet import AppearanceBranch
 from neural_methods.trainer.BaseTrainer import BaseTrainer
 from torch.autograd import Variable
 from tqdm import tqdm
@@ -30,6 +31,11 @@ class PhysnetTrainer(BaseTrainer):
         self.config = config
         self.min_valid_loss = None
         self.best_epoch = 0
+
+        # EZ: Added
+        self.appearance_branch = AppearanceBranch(
+            frames=config.MODEL.PHYSNET.FRAME_NUM).to(self.device)  # [3, T, 128,128]
+        # EZ
 
         self.model = PhysNet_padding_Encoder_Decoder_MAX(
             frames=config.MODEL.PHYSNET.FRAME_NUM).to(self.device)  # [3, T, 128,128]
@@ -65,8 +71,16 @@ class PhysnetTrainer(BaseTrainer):
             tbar = tqdm(data_loader["train"], ncols=80)
             for idx, batch in enumerate(tbar):
                 tbar.set_description("Train epoch %s" % epoch)
-                rPPG, x_visual = self.model(
-                    batch[0].to(torch.float32).to(self.device))
+
+                # EZ: Added
+                outputs = self.appearance_branch(batch[0].to(torch.float32).to(self.device))
+                # EZ
+
+                # EZ: Added "outputs" as an additional parameter
+                rPPG, x_visual, x_visual3232, x_visual1616 = self.model(
+                    batch[0].to(torch.float32).to(self.device), outputs)
+                # EZ
+
                 BVP_label = batch[1].to(
                     torch.float32).to(self.device)
                 rPPG = (rPPG - torch.mean(rPPG)) / torch.std(rPPG)  # normalize
@@ -127,8 +141,16 @@ class PhysnetTrainer(BaseTrainer):
                 vbar.set_description("Validation")
                 BVP_label = valid_batch[1].to(
                     torch.float32).to(self.device)
-                rPPG, x_visual = self.model(
-                    valid_batch[0].to(torch.float32).to(self.device))
+
+                # EZ: Added
+                outputs = self.appearance_branch(valid_batch[0].to(torch.float32).to(self.device))
+                # EZ
+
+                # EZ: Added outputs as an additional parameter
+                rPPG, x_visual, x_visual3232, x_visual1616 = self.model(
+                    valid_batch[0].to(torch.float32).to(self.device), outputs)
+                # EZ
+
                 rPPG = (rPPG - torch.mean(rPPG)) / torch.std(rPPG)  # normalize
                 BVP_label = (BVP_label - torch.mean(BVP_label)) / \
                             torch.std(BVP_label)  # normalize
@@ -143,7 +165,6 @@ class PhysnetTrainer(BaseTrainer):
         """ Runs the model on test sets."""
         if data_loader["test"] is None:
             raise ValueError("No data for test")
-
         print('')
         print("===Testing===")
         predictions = dict()
@@ -177,7 +198,9 @@ class PhysnetTrainer(BaseTrainer):
                 batch_size = test_batch[0].shape[0]
                 data, label = test_batch[0].to(
                     self.config.DEVICE), test_batch[1].to(self.config.DEVICE)
-                pred_ppg_test, _ = self.model(data)
+
+                outputs = self.appearance_branch(data)
+                pred_ppg_test, _, _, _ = self.model(data, outputs)
 
                 if self.config.TEST.OUTPUT_SAVE_DIR:
                     label = label.cpu()
