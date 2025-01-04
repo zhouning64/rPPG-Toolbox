@@ -38,7 +38,7 @@ def seed_worker(worker_id):
 def add_args(parser):
     """Adds arguments for parser."""
     parser.add_argument('--config_file', required=False,
-                        default="C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\configs\\train_configs\\MMPD_MMPD_UBFC-rPPG_TSCAN_BASIC.yaml",
+                        default="configs/train_configs/MMPD_MMPD_UBFC-rPPG_TSCAN_BASIC.yaml",
                         type=str,
                         help="The name of the model.")
     '''Neural Method Sample YAML LIST:
@@ -144,6 +144,8 @@ if __name__ == "__main__":
     config = get_config(args)
     print('Configuration:')
     print(config, end='\n\n')
+
+    torch.autograd.set_detect_anomaly(True)
 
     data_loader_dict = dict()  # dictionary of data loaders
     if config.TOOLBOX_MODE == "train_and_test":

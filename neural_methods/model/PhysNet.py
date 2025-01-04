@@ -19,49 +19,49 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
         self.ConvBlock1 = nn.Sequential(
             nn.Conv3d(3, 16, [1, 5, 5], stride=1, padding=[0, 2, 2]),
             nn.BatchNorm3d(16),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
 
         self.ConvBlock2 = nn.Sequential(
             nn.Conv3d(16, 32, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(32),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
         self.ConvBlock3 = nn.Sequential(
             nn.Conv3d(32, 64, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(64),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
 
         self.ConvBlock4 = nn.Sequential(
             nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(64),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
         self.ConvBlock5 = nn.Sequential(
             nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(64),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
         self.ConvBlock6 = nn.Sequential(
             nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(64),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
         self.ConvBlock7 = nn.Sequential(
             nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(64),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
         self.ConvBlock8 = nn.Sequential(
             nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(64),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
         self.ConvBlock9 = nn.Sequential(
             nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(64),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
 
         self.upsample = nn.Sequential(
@@ -93,8 +93,8 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
         temp = cv2.cvtColor(frame_np, cv2.COLOR_RGB2BGR)
         # frame1_np = frame_np
         # print("Frame1", np.min(frame1_np), np.max(frame1_np))
-        cv2.imwrite("C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\dataset\\saved_files\\temp.png", temp)  # Save in BGR format
-        img = cv2.imread("C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\dataset\\saved_files\\temp.png")
+        cv2.imwrite("saved_files/temp.png", temp)  # Save in BGR format
+        img = cv2.imread("saved_files/temp.png")
         # converting from gbr to hsv color space
         img_HSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         # skin color range for hsv color space
@@ -109,7 +109,7 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
         # global_mask=cv2.bitwise_and(YCrCb_mask,HSV_mask) #EZ: Get areas that were detected as skin in both HSV and YCbCr
         # global_result = global_result
         # print("Mask", np.max(HSV_mask), np.min(HSV_mask))
-        cv2.imwrite("C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\dataset\\saved_files\\mask.png", HSV_mask)  # Save in BGR format
+        cv2.imwrite("saved_files/mask.png", HSV_mask)  # Save in BGR format
         global_mask = HSV_mask
         global_mask = global_mask / 255
         # print(global_mask)
@@ -124,8 +124,8 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
         temp = cv2.cvtColor(frame_np, cv2.COLOR_RGB2BGR)
         # frame1_np = frame_np
         # print("Frame1", np.min(frame1_np), np.max(frame1_np))
-        cv2.imwrite("C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\dataset\\saved_files\\temp.png", temp)  # Save in BGR format
-        img = cv2.imread("C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\dataset\\saved_files\\temp.png")
+        cv2.imwrite("saved_files/temp.png", temp)  # Save in BGR format
+        img = cv2.imread("saved_files/temp.png")
 
         # Convert to HSV and YCbCr color spaces
         img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -201,7 +201,7 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
         return compressed_tensor
 
     def save_tensor_as_png(self, tensor, filename):
-        os.chdir("C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\dataset\\saved_files\\")
+        os.chdir("saved_files")
 
         # Ensure the tensor has 3 channels and dimensions 72x72
         assert tensor.shape == (3, 72, 72), "Tensor should have shape 3x72x72."
@@ -230,14 +230,25 @@ class PhysNet_padding_Encoder_Decoder_MAX(nn.Module):
         # Create a tensor to store the frame w/ skin segmented out, same dimensions as X
         device = x.device
         # Loop through frames, compute skin mask, multiply w/ frame, store in tensor
+
+        segmented_frames = torch.zeros_like(x)
         for b in range(0, batch):
             for t in range(0, length):
-                frame = x[b, :, t, :, :]  # Get 3x128x128 frame
+                frame = x[b, :, t, :, :]
                 frame = frame.to(device)
-                mask = self.skin_mask_v2(frame)  # Get mask of 0s and 1s
+                mask = self.skin_mask_v2(frame)
                 mask = mask.to(device)
-                seg_frame = frame * mask  # 3x72x72
-                x[b, :, t, :, :] = seg_frame
+                seg_frame = frame * mask
+                segmented_frames[b, :, t, :, :] = seg_frame
+        x = segmented_frames
+        #for b in range(0, batch):
+        #    for t in range(0, length):
+        #        frame = x[b, :, t, :, :]  # Get 3x128x128 frame
+        #        frame = frame.to(device)
+        #        mask = self.skin_mask_v2(frame)  # Get mask of 0s and 1s
+        #        mask = mask.to(device)
+        #        seg_frame = frame * mask  # 3x72x72
+        #        x[b, :, t, :, :] = seg_frame
 
                 # Save the imgs after applying skin mask
                 # file_name_og = "original_frames/image" + str(b) + "_" + str(t) + ".png"
@@ -289,29 +300,29 @@ class AppearanceBranch(nn.Module):
         self.ConvBlock1 = nn.Sequential(
             nn.Conv3d(3, 16, [1, 5, 5], stride=1, padding=[0, 2, 2]),  # 16
             nn.BatchNorm3d(16),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
 
         self.ConvBlock2 = nn.Sequential(
             nn.Conv3d(16, 32, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(32),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
         self.ConvBlock3 = nn.Sequential(
             nn.Conv3d(32, 64, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(64),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
 
         self.ConvBlock4 = nn.Sequential(
             nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(64),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
         self.ConvBlock5 = nn.Sequential(
             nn.Conv3d(64, 64, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(64),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
         )
 
         self.MaxpoolSpa = nn.MaxPool3d((1, 2, 2), stride=(1, 2, 2))

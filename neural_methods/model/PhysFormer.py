@@ -234,20 +234,20 @@ class ViT_ST_ST_Compact3_TDC_gra_sharp(nn.Module):
         self.Stem0 = nn.Sequential(
             nn.Conv3d(3, dim//4, [1, 5, 5], stride=1, padding=[0,2,2]),
             nn.BatchNorm3d(dim//4),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             nn.MaxPool3d((1, 2, 2), stride=(1, 2, 2)),
         )
         
         self.Stem1 = nn.Sequential(
             nn.Conv3d(dim//4, dim//2, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(dim//2),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             nn.MaxPool3d((1, 2, 2), stride=(1, 2, 2)),
         )
         self.Stem2 = nn.Sequential(
             nn.Conv3d(dim//2, dim, [3, 3, 3], stride=1, padding=1),
             nn.BatchNorm3d(dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             nn.MaxPool3d((1, 2, 2), stride=(1, 2, 2)),
         )
            

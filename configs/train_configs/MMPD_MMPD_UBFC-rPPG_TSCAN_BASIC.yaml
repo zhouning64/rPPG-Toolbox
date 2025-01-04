@@ -20,8 +20,8 @@ TRAIN:
     DATASET: MMPD
     DO_PREPROCESS: True                   # if first time, should be true
     DATA_FORMAT: NDCHW
-    DATA_PATH:   "D:\\mini_MMPD_walking"          # Raw dataset path, need to be updated
-    CACHED_PATH:  "D:\\mini_MMPD_walking\\cached_files"      # Processed dataset save path, need to be updated
+    DATA_PATH:   "dataset/MMPD_mini_stationary"   # Raw dataset path, need to be updated
+    CACHED_PATH:  "cached_files"    # Processed dataset save path, need to be updated
     EXP_DATA_NAME: ""
     BEGIN: 0.0
     END: 0.7
@@ -57,8 +57,8 @@ VALID:
     DATASET: MMPD
     DO_PREPROCESS: True                # if first time, should be true
     DATA_FORMAT: NDCHW
-    DATA_PATH:   "D:\\mini_MMPD_walking"          # Raw dataset path, need to be updated
-    CACHED_PATH:  "D:\\mini_MMPD_walking\\cached_files"      # Processed dataset save path, need to be updated
+    DATA_PATH:   "dataset/MMPD_mini_stationary"   # Raw dataset path, need to be updated
+    CACHED_PATH:  "cached_files"    # Processed dataset save path, need to be updated
     EXP_DATA_NAME: ""
     BEGIN: 0.7
     END: 0.85
@@ -96,8 +96,8 @@ TEST:
     DATASET: MMPD
     DO_PREPROCESS: True            # if first time, should be true
     DATA_FORMAT: NDCHW
-    DATA_PATH:   "D:\\mini_MMPD_walking"          # Raw dataset path, need to be updated
-    CACHED_PATH:  "D:\\mini_MMPD_walking\\cached_files"      # Processed dataset save path, need to be updated
+    DATA_PATH:   "dataset/MMPD_mini_stationary"   # Raw dataset path, need to be updated
+    CACHED_PATH:  "cached_files"    # Processed dataset save path, need to be updated
     EXP_DATA_NAME: ""
     BEGIN: 0.85
     END: 1.0

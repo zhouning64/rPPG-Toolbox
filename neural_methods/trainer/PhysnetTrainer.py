@@ -19,11 +19,11 @@ class PhysnetTrainer(BaseTrainer):
     def __init__(self, config, data_loader):
         """Inits parameters from args and the writer for TensorboardX."""
         super().__init__()
-        #self.device = torch.device(config.DEVICE)
+        # self.device = torch.device(config.DEVICE)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.max_epoch_num = config.TRAIN.EPOCHS
-        #self.model_dir = config.MODEL.MODEL_DIR
-        self.model_dir =  "C:\\Users\\zhoun\\prj\\rPPG-Toolbox\\dataset\\saved_model\\"
+        # self.model_dir = config.MODEL.MODEL_DIR
+        self.model_dir = "saved_model"
         self.model_file_name = config.TRAIN.MODEL_FILE_NAME
         self.batch_size = config.TRAIN.BATCH_SIZE
         self.num_of_gpu = config.NUM_OF_GPU_TRAIN
@@ -83,9 +83,13 @@ class PhysnetTrainer(BaseTrainer):
 
                 BVP_label = batch[1].to(
                     torch.float32).to(self.device)
-                rPPG = (rPPG - torch.mean(rPPG)) / torch.std(rPPG)  # normalize
-                BVP_label = (BVP_label - torch.mean(BVP_label)) / \
-                            torch.std(BVP_label)  # normalize
+                # rPPG = (rPPG - torch.mean(rPPG)) / torch.std(rPPG)  # normalize
+                # BVP_label = (BVP_label - torch.mean(BVP_label)) / \
+                #            torch.std(BVP_label)  # normalize
+                rPPG = ((rPPG - torch.mean(rPPG)) / torch.std(rPPG)).clone()
+
+                BVP_label = ((BVP_label - torch.mean(BVP_label)) / torch.std(BVP_label)).clone()
+
                 loss = self.loss_model(rPPG, BVP_label)
                 loss.backward()
                 running_loss += loss.item()
