@@ -37,6 +37,7 @@ def seed_worker(worker_id):
 
 def add_args(parser):
     """Adds arguments for parser."""
+    parser.add_argument('--v', required=False, default="record.mpeg", type=str)
     parser.add_argument('--config_file', required=False,
                         default="configs/train_configs/MMPD_MMPD_UBFC-rPPG_TSCAN_BASIC.yaml",
                         type=str,
@@ -108,7 +109,6 @@ def test(config, data_loader_dict):
     else:
         raise ValueError('Your Model is Not Supported  Yet!')
     model_trainer.test(data_loader_dict)
-
 
 def unsupervised_method_inference(config, data_loader):
     if not config.UNSUPERVISED.METHOD:
@@ -306,9 +306,9 @@ if __name__ == "__main__":
             generator=general_generator
         )
 
-    else:
+    elif not config.TOOLBOX_MODE == "run":
         raise ValueError(
-            "Unsupported toolbox_mode! Currently support train_and_test or only_test or unsupervised_method.")
+            "Unsupported toolbox_mode! Currently support train_and_test or only_test or unsupervised_method or run.")
 
     if config.TOOLBOX_MODE == "train_and_test":
         train_and_test(config, data_loader_dict)

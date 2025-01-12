@@ -29,7 +29,7 @@ TRAIN:
       DATA_TYPE: [ 'Raw' ]
       LABEL_TYPE: Raw
       DO_CHUNK: True
-      CHUNK_LENGTH: 128
+      CHUNK_LENGTH: 600
       CROP_FACE:
         DO_CROP_FACE: True
         BACKEND: 'HC'    # HC for Haar Cascade, RF for RetinaFace
@@ -66,7 +66,7 @@ VALID:
       DATA_TYPE: [ 'Raw' ]
       LABEL_TYPE: Raw
       DO_CHUNK: True
-      CHUNK_LENGTH: 128
+      CHUNK_LENGTH: 600
       CROP_FACE:
         DO_CROP_FACE: True
         BACKEND: 'HC'    # HC for Haar Cascade, RF for RetinaFace
@@ -105,7 +105,7 @@ TEST:
       DATA_TYPE: [ 'Raw' ]
       LABEL_TYPE: Raw
       DO_CHUNK: True
-      CHUNK_LENGTH: 128
+      CHUNK_LENGTH: 600
       CROP_FACE:
         DO_CROP_FACE: True
         BACKEND: 'HC'    # HC for Haar Cascade, RF for RetinaFace
@@ -118,7 +118,7 @@ TEST:
       RESIZE:
         H: 60
         W: 60
-DEVICE: cuda:0
+DEVICE: cpu
 NUM_OF_GPU_TRAIN: 1
 LOG:
   PATH: runs/exp
@@ -126,7 +126,7 @@ MODEL:
   DROP_RATE: 0.2
   NAME: Physnet
   PHYSNET:
-    FRAME_NUM: 128
+    FRAME_NUM: 600
 INFERENCE:
   BATCH_SIZE: 4
   EVALUATION_METHOD: "FFT"        # "FFT" or "peak detection"

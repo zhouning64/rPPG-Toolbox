@@ -15,7 +15,7 @@ def read_label(dataset):
 
 def read_hr_label(feed_dict, index):
     """Read manually corrected UBFC labels."""
-    # For UBFC only
+    # For UBFCfrom evaluation.post_process import * only
     if index[:7] == 'subject':
         index = index[7:]
     video_dict = feed_dict[index]
@@ -51,7 +51,11 @@ def calculate_metrics(predictions, labels, config):
     SNR_all = list()
     MACC_all = list()
     print("Calculating metrics!")
+
+    iter = 0
     for index in tqdm(predictions.keys(), ncols=80):
+        print ("iteration {0}".format(iter))
+
         prediction = _reform_data_from_dict(predictions[index])
         label = _reform_data_from_dict(labels[index])
 

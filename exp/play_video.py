@@ -2,10 +2,19 @@ import cv2
 import numpy as np
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
+import os
+
+
+#file_path = "dataset/MMPD_mini_stationary/subject1/Copy of p1_0.mat"
+file_path = "dataset/MMPD_mini_stationary/subject1/Copy of p1_0.mat"
+if os.path.exists(file_path):
+    mat_file = loadmat(file_path)
+else:
+    print("File not found.")
 
 
 # Load the .mat file
-mat_file = loadmat("D:\\mini_MMPD_walking\\subject1\\p1_7.mat")
+mat_file = loadmat("dataset/MMPD_mini_stationary/subject1/Copy\\ of\\ p1_0.mat")
 
 # Extract data
 video = mat_file['video']
