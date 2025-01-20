@@ -39,7 +39,7 @@ def add_args(parser):
     """Adds arguments for parser."""
     parser.add_argument('--v', required=False, default="record.mpeg", type=str)
     parser.add_argument('--config_file', required=False,
-                        default="configs/train_configs/MMPD_MMPD_UBFC-rPPG_TSCAN_BASIC.yaml",
+                        default="configs/train_configs/MMPD_MMPD_MMPD_PHYSNET_ELLIE.yaml",
                         type=str,
                         help="The name of the model.")
     '''Neural Method Sample YAML LIST:
@@ -68,6 +68,8 @@ def train_and_test(config, data_loader_dict):
     """Trains the model."""
     if config.MODEL.NAME == "Physnet":
         model_trainer = trainer.PhysnetTrainer.PhysnetTrainer(config, data_loader_dict)
+    elif config.MODEL.NAME == "PhysnetEllie":
+        model_trainer = trainer.PhysnetTrainerEllie.PhysnetTrainerEllie(config, data_loader_dict)
     elif config.MODEL.NAME == "iBVPNet":
         model_trainer = trainer.iBVPNetTrainer.iBVPNetTrainer(config, data_loader_dict)
     elif config.MODEL.NAME == "Tscan":

@@ -5,16 +5,12 @@ from collections import OrderedDict
 import numpy as np
 import torch
 import torch.optim as optim
-import cv2
 from evaluation.metrics import calculate_metrics
-from exp.record_video import load_mpg_into_tensor
 from neural_methods.loss.PhysNetNegPearsonLoss import Neg_Pearson
 from neural_methods.model.PhysNet import PhysNet_padding_Encoder_Decoder_MAX
-from neural_methods.model.PhysNet import AppearanceBranch
 from neural_methods.trainer.BaseTrainer import BaseTrainer
 from torch.autograd import Variable
 from tqdm import tqdm
-from evaluation.post_process import *
 
 
 class PhysnetTrainer(BaseTrainer):
@@ -22,11 +18,9 @@ class PhysnetTrainer(BaseTrainer):
     def __init__(self, config, data_loader):
         """Inits parameters from args and the writer for TensorboardX."""
         super().__init__()
-        # self.device = torch.device(config.DEVICE)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(config.DEVICE)
         self.max_epoch_num = config.TRAIN.EPOCHS
-        # self.model_dir = config.MODEL.MODEL_DIR
-        self.model_dir = "saved_model"
+        self.model_dir = config.MODEL.MODEL_DIR
         self.model_file_name = config.TRAIN.MODEL_FILE_NAME
         self.batch_size = config.TRAIN.BATCH_SIZE
         self.num_of_gpu = config.NUM_OF_GPU_TRAIN
@@ -34,11 +28,6 @@ class PhysnetTrainer(BaseTrainer):
         self.config = config
         self.min_valid_loss = None
         self.best_epoch = 0
-
-        # EZ: Added
-        self.appearance_branch = AppearanceBranch(
-            frames=config.MODEL.PHYSNET.FRAME_NUM).to(self.device)  # [3, T, 128,128]
-        # EZ
 
         self.model = PhysNet_padding_Encoder_Decoder_MAX(
             frames=config.MODEL.PHYSNET.FRAME_NUM).to(self.device)  # [3, T, 128,128]
@@ -50,9 +39,8 @@ class PhysnetTrainer(BaseTrainer):
                 self.model.parameters(), lr=config.TRAIN.LR)
             # See more details on the OneCycleLR scheduler here: https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.OneCycleLR.html
             self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
-                self.optimizer, max_lr=config.TRAIN.LR, epochs=config.TRAIN.EPOCHS,
-                steps_per_epoch=self.num_train_batches)
-        elif config.TOOLBOX_MODE == "only_test" or config.TOOLBOX_MODE == "run":
+                self.optimizer, max_lr=config.TRAIN.LR, epochs=config.TRAIN.EPOCHS, steps_per_epoch=self.num_train_batches)
+        elif config.TOOLBOX_MODE == "only_test":
             pass
         else:
             raise ValueError("PhysNet trainer initialized in incorrect toolbox mode!")
@@ -74,25 +62,13 @@ class PhysnetTrainer(BaseTrainer):
             tbar = tqdm(data_loader["train"], ncols=80)
             for idx, batch in enumerate(tbar):
                 tbar.set_description("Train epoch %s" % epoch)
-
-                # EZ: Added
-                outputs = self.appearance_branch(batch[0].to(torch.float32).to(self.device))
-                # EZ
-
-                # EZ: Added "outputs" as an additional parameter
                 rPPG, x_visual, x_visual3232, x_visual1616 = self.model(
-                    batch[0].to(torch.float32).to(self.device), outputs)
-                # EZ
-
+                    batch[0].to(torch.float32).to(self.device))
                 BVP_label = batch[1].to(
                     torch.float32).to(self.device)
-                # rPPG = (rPPG - torch.mean(rPPG)) / torch.std(rPPG)  # normalize
-                # BVP_label = (BVP_label - torch.mean(BVP_label)) / \
-                #            torch.std(BVP_label)  # normalize
-                rPPG = ((rPPG - torch.mean(rPPG)) / torch.std(rPPG)).clone()
-
-                BVP_label = ((BVP_label - torch.mean(BVP_label)) / torch.std(BVP_label)).clone()
-
+                rPPG = (rPPG - torch.mean(rPPG)) / torch.std(rPPG)  # normalize
+                BVP_label = (BVP_label - torch.mean(BVP_label)) / \
+                            torch.std(BVP_label)  # normalize
                 loss = self.loss_model(rPPG, BVP_label)
                 loss.backward()
                 running_loss += loss.item()
@@ -148,16 +124,8 @@ class PhysnetTrainer(BaseTrainer):
                 vbar.set_description("Validation")
                 BVP_label = valid_batch[1].to(
                     torch.float32).to(self.device)
-
-                # EZ: Added
-                outputs = self.appearance_branch(valid_batch[0].to(torch.float32).to(self.device))
-                # EZ
-
-                # EZ: Added outputs as an additional parameter
                 rPPG, x_visual, x_visual3232, x_visual1616 = self.model(
-                    valid_batch[0].to(torch.float32).to(self.device), outputs)
-                # EZ
-
+                    valid_batch[0].to(torch.float32).to(self.device))
                 rPPG = (rPPG - torch.mean(rPPG)) / torch.std(rPPG)  # normalize
                 BVP_label = (BVP_label - torch.mean(BVP_label)) / \
                             torch.std(BVP_label)  # normalize
@@ -168,60 +136,11 @@ class PhysnetTrainer(BaseTrainer):
             valid_loss = np.asarray(valid_loss)
         return np.mean(valid_loss)
 
-    def load_mpg_into_tensor(self, filepath):
-        """
-        Reads a .mpg (MPEG) video file using OpenCV,
-        converts each frame to a torch tensor,
-        and returns a single tensor of shape (num_frames, channels, height, width).
-        """
-        cap = cv2.VideoCapture(filepath)
-        if not cap.isOpened():
-            raise IOError(f"Cannot open video file: {filepath}")
-
-        frames = []
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                # No more frames or error reading
-                break
-
-            # frame is in BGR format by default (OpenCV)
-            # Convert to RGB to maintain consistent color channel ordering
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            # Convert NumPy array (H, W, C) to a PyTorch tensor with shape (C, H, W)
-            frame_tensor = torch.from_numpy(frame_rgb).permute(2, 0, 1)  # (3, H, W)
-
-            frames.append(frame_tensor)
-        cap.release()
-
-    def getHearRate(self, image_file, model_path):
-        image = load_mpg_into_tensor(image_file)
-
-        print("opening model file: " , model_path)
-        self.model.load_state_dict(torch.load(model_path))
-        self.model = self.model.to(self.config.DEVICE)
-        self.model.eval()
-
-        with torch.no_grad():
-            outputs = self.appearance_branch(image)
-            prediction, _, _, _ = self.model(image, outputs)
-
-            prediction = prediction.flatten()
-
-            video_frame_size = prediction.shape[0]
-            window_frame_size = video_frame_size
-            pred_window = prediction[0 : window_frame_size]
-            diff_flag_test = False
-            hr = calculate_hr_from_video(
-                pred_window, diff_flag=diff_flag_test, use_bandpass=False, fs=30, hr_method='FFT')
-            print("inference heart rate: {}".format(hr))
-            return hr
-
     def test(self, data_loader):
         """ Runs the model on test sets."""
         if data_loader["test"] is None:
             raise ValueError("No data for test")
+
         print('')
         print("===Testing===")
         predictions = dict()
@@ -236,7 +155,7 @@ class PhysnetTrainer(BaseTrainer):
         else:
             if self.config.TEST.USE_LAST_EPOCH:
                 last_epoch_model_path = os.path.join(
-                    self.model_dir, self.model_file_name + '_Epoch' + str(self.max_epoch_num - 1) + '.pth')
+                self.model_dir, self.model_file_name + '_Epoch' + str(self.max_epoch_num - 1) + '.pth')
                 print("Testing uses last epoch as non-pretrained model!")
                 print(last_epoch_model_path)
                 self.model.load_state_dict(torch.load(last_epoch_model_path))
@@ -253,10 +172,9 @@ class PhysnetTrainer(BaseTrainer):
         with torch.no_grad():
             for _, test_batch in enumerate(tqdm(data_loader["test"], ncols=80)):
                 batch_size = test_batch[0].shape[0]
-                data, label = test_batch[0].to(self.config.DEVICE), test_batch[1].to(self.config.DEVICE)
-
-                outputs = self.appearance_branch(data)
-                pred_ppg_test, _, _, _ = self.model(data, outputs)
+                data, label = test_batch[0].to(
+                    self.config.DEVICE), test_batch[1].to(self.config.DEVICE)
+                pred_ppg_test, _, _, _ = self.model(data)
 
                 if self.config.TEST.OUTPUT_SAVE_DIR:
                     label = label.cpu()
@@ -273,7 +191,7 @@ class PhysnetTrainer(BaseTrainer):
 
         print('')
         calculate_metrics(predictions, labels, self.config)
-        if self.config.TEST.OUTPUT_SAVE_DIR:  # saving test outputs
+        if self.config.TEST.OUTPUT_SAVE_DIR: # saving test outputs
             self.save_test_outputs(predictions, labels, self.config)
 
     def save_model(self, index):
