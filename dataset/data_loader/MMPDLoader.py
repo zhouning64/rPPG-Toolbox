@@ -117,11 +117,6 @@ class MMPDLoader(BaseLoader):
         bvps = BaseLoader.resample_ppg(bvps, target_length)
         frames_clips, bvps_clips = self.preprocess(frames, bvps, config_preprocess)
 
-        # print("FRAMES MMPD SHAPE", frames.shape)
-        # print("FRAMES CLIPS MMPD SHAPE", frames_clips.shape)
-        # print("BVPS MMPD", bvps.shape)
-        # print("BVPS CLIPS MMPD", bvps_clips.shape)
-
         input_name_list, label_name_list = self.save_multi_process(frames_clips, bvps_clips, saved_filename)
         file_list_dict[i] = input_name_list
 
@@ -161,17 +156,11 @@ class MMPDLoader(BaseLoader):
             None
         """
         file_list_path = self.file_list_path  # get list of files in
-
-        # EZ
-        print("======FILE LIST PATH============", file_list_path)
-        # EZ
-
         file_list_df = pd.read_csv(file_list_path)
         inputs_temp = file_list_df['input_files'].tolist()
         inputs = []
         for each_input in inputs_temp:
             info = each_input.split(os.sep)[-1].split('_')
-            # print("==========INFO=========", info)
             light = int(info[1][-1])
             motion = int(info[2][-1])
             exercise = int(info[3][-1])
@@ -180,8 +169,6 @@ class MMPDLoader(BaseLoader):
             glasser = int(info[6][-1])
             hair_cover = int(info[7][-1])
             makeup = int(info[8][-1])
-            print("========INFO============", self.info)
-
             if (light in self.info.LIGHT) and (motion in self.info.MOTION) and \
                     (exercise in self.info.EXERCISE) and (skin_color in self.info.SKIN_COLOR) and \
                     (gender in self.info.GENDER) and (glasser in self.info.GLASSER) and \
